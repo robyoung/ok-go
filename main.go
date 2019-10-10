@@ -1,17 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-  "bytes"
 	"net/url"
-  "path"
+	"path"
 	"strconv"
-  "strings"
-  "time"
+	"strings"
+	"time"
 
 	"github.com/gocolly/colly"
 )
-
 
 func main() {
 	// Instantiate default collector
@@ -20,41 +19,41 @@ func main() {
 	c.Async = true
 	c.UserAgent = "RobBot/0.1"
 	c.Limit(&colly.LimitRule{
-    DomainGlob: "*",
-    Parallelism: 2,
-    Delay: 1 * time.Second,
-  })
+		DomainGlob:  "*",
+		Parallelism: 2,
+		Delay:       1 * time.Second,
+	})
 
-  store := NewLocalPropertyStore("./properties")
+	store := NewLocalPropertyStore("./properties")
 
-  c.OnHTML("body", func(e *colly.HTMLElement) {
-    if !strings.Contains(e.Request.URL.Path, "property-for-sale/property") {
-      return
-    }
-    name := path.Base(e.Request.URL.Path)
-    ext := path.Ext(name)
-    if ext != "" {
-      name = name[:len(name) - len(ext)]
-    }
-    propElem := e.DOM.Find("div.property-header-bedroom-and-price")
-    property := Property {}
-    property.Description = propElem.Find("h1").Text()
-    property.Address = strings.TrimSpace(e.DOM.Find("address").Text())
-    property.Price = strings.TrimSpace(e.DOM.Find("#propertyHeaderPrice strong").Text())
-    property.Name = name
-    if err := store.Update(name, &property, bytes.NewReader(e.Response.Body)); err != nil {
-      fmt.Println(err)
-    }
-  })
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		if !strings.Contains(e.Request.URL.Path, "property-for-sale/property") {
+			return
+		}
+		name := path.Base(e.Request.URL.Path)
+		ext := path.Ext(name)
+		if ext != "" {
+			name = name[:len(name)-len(ext)]
+		}
+		propElem := e.DOM.Find("div.property-header-bedroom-and-price")
+		property := Property{}
+		property.Description = propElem.Find("h1").Text()
+		property.Address = strings.TrimSpace(e.DOM.Find("address").Text())
+		property.Price = strings.TrimSpace(e.DOM.Find("#propertyHeaderPrice strong").Text())
+		property.Name = name
+		if err := store.Update(name, &property, bytes.NewReader(e.Response.Body)); err != nil {
+			fmt.Println(err)
+		}
+	})
 
 	// On every a element which has href attribute call callback
 	c.OnHTML("a.propertyCard-priceLink[href]", func(e *colly.HTMLElement) {
 		link := e.Attr("href")
 		// Print link
 		fmt.Printf("Link found: %s\n", link)
-    if propertyURL, err := url.Parse(e.Request.AbsoluteURL(link)); err == nil {
-      c.Visit(propertyURL.String())
-    }
+		if propertyURL, err := url.Parse(e.Request.AbsoluteURL(link)); err == nil {
+			c.Visit(propertyURL.String())
+		}
 	})
 
 	c.OnHTML("span.searchHeader-resultCount", func(e *colly.HTMLElement) {
